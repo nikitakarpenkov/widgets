@@ -11,62 +11,50 @@ function init(Survey, $) {
     isDefaultRender: true,
     activatedByChanged: function(activatedBy) {
       if (
-        Survey.JsonObject.metaData.findProperty("text", "choices") !== null ||
-        Survey.JsonObject.metaData.findProperty("text", "choicesByUrl") !== null
+        Survey.JsonObject.metaData.findProperty("text", "autocomplete") !== null ||
+        Survey.JsonObject.metaData.findProperty("text", "autocompleteByUrl") !== null
       ) {
         return;
       }
       Survey.JsonObject.metaData.addProperty("text", {
-        name: "choices:itemvalues",
+        name: "autocomplete",
+        default: []
+      });
+      Survey.JsonObject.metaData.addProperty("text", {
+        name: "autocompleteByUrl:restfull",
+        className: "ChoicesRestfull",
         onGetValue: function(obj) {
-          return Survey.ItemValue.getData(obj.choices || []);
+          return obj && obj.autocompleteByUrl && obj.autocompleteByUrl.getData();
         },
         onSetValue: function(obj, value) {
-          if (!obj.choices) {
-            obj.choices = obj.createItemValues("choices");
+          if (!obj.autocompleteByUrl) {
+            obj.autocompleteByUrl = new Survey.ChoicesRestfull();
           }
-          obj.choices = value;
+          obj.autocompleteByUrl.setData(value);
         }
       });
       Survey.JsonObject.metaData.addProperty("text", {
-        name: "choicesByUrl:restfull",
-        className: "ChoicesRestfull",
-        onGetValue: function(obj) {
-          return obj && obj.choicesByUrl && obj.choicesByUrl.getData();
-        },
-        onSetValue: function(obj, value) {
-          if (!obj.choicesByUrl) {
-            obj.choicesByUrl = new Survey.ChoicesRestfull();
-          }
-          obj.choicesByUrl.setData(value);
-        }
+        name: "autocompleteConfig",
+        default: null
       });
     },
     afterRender: function(question, el) {
       var $el = $(el).is("input") ? $(el) : $(el).find("input");
       var options = {
-        data: (question.choices || []).map(function(item) {
-          return item.getData();
-        }),
         adjustWidth: false,
-        list: {
-          sort: {
-            enabled: true
-          },
-          match: {
-            enabled: true
-          }
-        },
         placeholder: question.placeholder
-      };
-      if (!!question.choicesByUrl) {
+      }
+      if (question.autocompleteConfig) {
+        Object.assign(options, question.autocompleteConfig);
+      }
+      if (!options.data) {
+        options.data = (question.autocomplete || []);
+      }
+      if (!!question.autocompleteByUrl) {
         options.url = function(phrase) {
-          return question.choicesByUrl.url;
+          return question.autocompleteByUrl.url;
         };
-        options.getValue = question.choicesByUrl.valueName;
-        // options.ajaxSettings = {
-        //   dataType: "jsonp"
-        // };
+        options.getValue = question.autocompleteByUrl.valueName;
       }
       $el.easyAutocomplete(options);
     },
